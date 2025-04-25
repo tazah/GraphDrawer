@@ -1,8 +1,38 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 
-
+def parse_scientific_notation(value_str):
+    """
+    Parse different number formats:
+    - Regular numbers (1.23)
+    - Scientific notation like '5*10^(-4)' or '5*10^4'
+    - Simple power notation like '5^6'
+    Returns the float value.
+    """
+    value_str = value_str.strip()
+    
+    # Check if it's scientific notation in format like '5*10^(-4)' or '5*10^4'
+    sci_pattern = r'([-+]?\d*\.?\d+)\s*\*\s*10\^\(?([-+]?\d+)\)?'
+    sci_match = re.match(sci_pattern, value_str)
+    
+    if sci_match:
+        base = float(sci_match.group(1))
+        exponent = int(sci_match.group(2))
+        return base * (10 ** exponent)
+    
+    # Check if it's simple power notation like '5^6'
+    power_pattern = r'([-+]?\d*\.?\d+)\s*\^\s*\(?([-+]?\d+)\)?'
+    power_match = re.match(power_pattern, value_str)
+    
+    if power_match:
+        base = float(power_match.group(1))
+        exponent = int(power_match.group(2))
+        return base ** exponent
+    
+    # If not in any special notation, try to convert directly to float
+    return float(value_str)
 
 st.set_page_config(page_title="Graphique sur Papier Millimétré", layout="centered")
 st.markdown("<h4>📐 🐆 🌹 Ghaydoun's Graph Paper Generator 🌹 🐆 📐</h4>", unsafe_allow_html=True)
@@ -13,13 +43,20 @@ paper_height = 20  # cm
 st.sidebar.header("Paramètres")
 x_values = st.sidebar.text_input("Coordonnées X (séparées par des virgules)", "1, 2, 3, 4, 5, 6, 7, 8, 9, 30")
 y_values = st.sidebar.text_input("Coordonnées Y (séparées par des virgules)", "1, 2, 3, 4, 5, 6, 7, 8, 9, 20")
+st.sidebar.markdown("*Formats supportés: nombres décimaux (1.23), notation scientifique (5*10^(-4)) ou exposant simple (5^6)*")
 paper_width_adjust = st.sidebar.number_input("Largeur de l'espace de dessin (cm)", min_value=1, max_value=100, value=30)
 paper_height_adjust = st.sidebar.number_input("Hauteur de l'espace de dessin (cm)", min_value=1, max_value=100, value=20)
 
 
 try:
-    x = list(map(float, x_values.split(",")))
-    y = list(map(float, y_values.split(",")))
+    # Parse X values
+    x_parts = [part.strip() for part in x_values.split(",") if part.strip()]
+    x = [parse_scientific_notation(part) for part in x_parts]
+    
+    # Parse Y values
+    y_parts = [part.strip() for part in y_values.split(",") if part.strip()]
+    y = [parse_scientific_notation(part) for part in y_parts]
+    
     if len(x) != len(y):
         st.error("Le nombre de valeurs X et Y doit être le même.")
     else:
@@ -71,5 +108,5 @@ try:
         st.success(f"Échelle X : 1 cm = {1/echelle_x:.4f} unité(s) → 1 unité = {echelle_x:.3f} cm")
         st.success(f"Échelle Y : 1 cm = {1/echelle_y:.4f} unité(s) → 1 unité = {echelle_y:.2f} cm")
 
-except ValueError:
-    st.error("Veuillez entrer des valeurs numériques valides.")
+except ValueError as e:
+    st.error(f"Veuillez entrer des valeurs numériques valides. Formats supportés: nombres décimaux (1.23), notation scientifique (5*10^(-4)) ou exposant simple (5^6).")
